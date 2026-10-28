@@ -1,0 +1,3 @@
+CREATE TEMPORARY TABLE affected_codes (
+    product_code TEXT PRIMARY KEY
+) ON COMMIT DROP

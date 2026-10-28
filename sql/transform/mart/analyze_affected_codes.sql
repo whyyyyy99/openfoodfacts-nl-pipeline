@@ -1,0 +1,1 @@
+ANALYZE affected_codes
