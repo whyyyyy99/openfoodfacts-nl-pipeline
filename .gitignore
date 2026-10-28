@@ -4,5 +4,8 @@ __pycache__/
 .venv/
 venv/
 
+# Downloaded delta files
+data/
+
 # OS
 .DS_Store

@@ -1,4 +1,4 @@
-"""End-to-end pipeline runs over the committed sample_data fixture.
+"""End-to-end pipeline runs over the committed tests/fixtures delta files.
 
 These runs use real, unmodified Open Food Facts records and no network, so the
 rerun guarantee stays reproducible after the live delta files leave the source.
@@ -13,9 +13,9 @@ from src.pipeline import run_pipeline
 
 pytestmark = pytest.mark.integration
 
-FIXTURE_DIR = PROJECT_ROOT / "sample_data"
-OLDER = "openfoodfacts_products_1786256038_1786342032.json.gz"
-NEWER = "openfoodfacts_products_1786342032_1786428017.json.gz"
+FIXTURE_DIR = PROJECT_ROOT / "tests" / "fixtures"
+OLDER = "openfoodfacts_products_1792997789_1793079340.json.gz"
+NEWER = "openfoodfacts_products_1793079340_1793168139.json.gz"
 
 
 def _truncate_pipeline_tables():
@@ -47,18 +47,18 @@ def test_fixture_run_produces_expected_counts_and_rerun_changes_nothing(empty_da
     assert first.selected_files == (OLDER, NEWER)
     assert (first.downloaded_file_count, first.reused_file_count) == (0, 2)
     assert (first.loaded_file_count, first.skipped_file_count) == (2, 0)
-    assert first.staged_row_count == 400
-    assert first.raw_row_count == first.staging_row_count == 400
-    assert (first.valid_staging_row_count, first.invalid_staging_row_count) == (400, 0)
-    assert first.non_winning_valid_row_count == 20
-    assert first.mart_row_count == 380
-    assert first.cross_file_product_count == 20
+    assert first.staged_row_count == 70
+    assert first.raw_row_count == first.staging_row_count == 70
+    assert (first.valid_staging_row_count, first.invalid_staging_row_count) == (69, 1)
+    assert first.non_winning_valid_row_count == 8
+    assert first.mart_row_count == 61
+    assert first.cross_file_product_count == 8
 
     second = _run(OLDER, NEWER, verify=True)
 
     assert (second.loaded_file_count, second.skipped_file_count) == (0, 2)
     assert second.staged_row_count == 0
-    assert (second.raw_row_count, second.mart_row_count) == (400, 380)
+    assert (second.raw_row_count, second.mart_row_count) == (70, 61)
     assert second.raw_checksum == first.raw_checksum
     assert second.staging_checksum == first.staging_checksum
     assert second.mart_checksum == first.mart_checksum
@@ -84,7 +84,7 @@ def test_fixture_run_produces_expected_counts_and_rerun_changes_nothing(empty_da
             """
         ).fetchall()
 
-    assert refreshes == [("mart_incremental", 380, 380), ("mart_incremental", 0, 380)]
+    assert refreshes == [("mart_incremental", 61, 61), ("mart_incremental", 0, 61)]
     assert cross_file_winner_sources == [(NEWER,)]
 
 
@@ -95,9 +95,9 @@ def test_older_file_arriving_late_yields_the_same_mart(empty_database):
     newer_only = _run(NEWER)
     late = _run(OLDER, NEWER)
 
-    assert newer_only.mart_row_count == 200
+    assert newer_only.mart_row_count == 35
     assert (late.loaded_file_count, late.skipped_file_count) == (1, 1)
-    assert late.mart_row_count == 380
+    assert late.mart_row_count == 61
     assert late.mart_checksum == together
 
 

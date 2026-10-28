@@ -159,7 +159,7 @@ def test_load_file_uses_basename_and_rerun_preserves_raw_checksum(tmp_path):
         ],
     )
     second_path = _write_gzip(
-        tmp_path / "sample_data" / first_path.name,
+        tmp_path / "fixtures" / first_path.name,
         [json.dumps({"code": "this-must-not-replace-raw"}) + "\n"],
     )
     connection = get_connection()
