@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.pytest_cache/
+
+# Local environment
+.env
+.env.*
 
 # Downloaded delta files
 data/

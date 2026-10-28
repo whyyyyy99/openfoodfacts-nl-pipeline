@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: openfoodfacts
+    description: Open Food Facts delta files loaded by the Python pipeline (src/load.py).
+    schema: raw
+    tables:
+      - name: source_files
+        description: One row per delta file, with its load status.
+        columns:
+          - name: source_file_name
+            description: Delta file name, e.g. openfoodfacts_products_<start>_<end>.json.gz.
+            data_tests:
+              - unique
+              - not_null
+
+      - name: product_records
+        description: Append-only product records, one row per line of a delta file, payload kept as received.
+        config:
+          loaded_at_field: loaded_at
+          freshness:
+            warn_after: {count: 2, period: day}
