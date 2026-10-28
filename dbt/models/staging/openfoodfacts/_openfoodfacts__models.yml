@@ -1,0 +1,139 @@
+version: 2
+
+models:
+  - name: stg_openfoodfacts__product_records
+    description: >
+      One row per raw product record, parsed from the JSON payload. No row is
+      dropped: validation_errors makes a row unusable, quality_warnings only
+      flags suspicious values.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - source_file_name
+              - source_line_number
+    columns:
+      - name: source_file_name
+        data_tests:
+          - not_null
+      - name: source_line_number
+        data_tests:
+          - not_null
+      - name: product_code
+        description: Barcode as text, trimmed. Kept when it is not all digits, so the bad value stays visible.
+      - name: nutriscore_status
+        description: available, unknown, not_applicable, missing or unexpected.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['available', 'unknown', 'not_applicable', 'missing', 'unexpected']
+      - name: nutriscore_grade
+        description: a to e when nutriscore_status is available, otherwise null.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['a', 'b', 'c', 'd', 'e']
+      - name: nutrition_basis
+        description: 100g or 100ml. Nutrient columns are null when the basis is missing or unsupported.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['100g', '100ml']
+      - name: validation_errors
+        description: Reasons the row is unusable (product code, last_modified_t).
+        data_tests:
+          - not_null
+      - name: quality_warnings
+        description: Suspicious nutrition or Nutri-Score values; the row stays usable.
+        data_tests:
+          - not_null
+      - name: is_valid
+        description: True when validation_errors is empty.
+        data_tests:
+          - not_null
+      - name: nutrition_preparation
+        description: as_sold or prepared. Prepared values (e.g. soup made up with water) are not comparable with as-sold ones.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['as_sold', 'prepared']
+      - name: nutriscore_2023_grade
+        description: Grade from the 2023 Nutri-Score algorithm; nutriscore_grade mixes algorithm versions.
+      - name: has_estimated_nutrients
+        description: True when Open Food Facts estimated at least one of the eight label nutrients instead of reading it from the label.
+      - name: added_sugars_is_estimated
+        description: True when added_sugars_g was estimated from the ingredients, which is the case for most added-sugar values.
+      - name: fiber_is_estimated
+        description: True when fiber_g was estimated from the ingredients.
+
+unit_tests:
+  - name: test_valid_product_is_parsed_without_errors
+    model: stg_openfoodfacts__product_records
+    given:
+      - input: source('openfoodfacts', 'product_records')
+        rows:
+          - source_file_name: delta.json.gz
+            source_line_number: 1
+            loaded_at: '2026-10-28 00:00:00+00'
+            payload: '{"code": " 00123 ", "last_modified_t": 1789000000, "product_name": "Yoghurt", "nutriscore_grade": "b", "nutrition": {"aggregated_set": {"per": "100g", "preparation": "as_sold", "nutrients": {"fat": {"value": 3.5, "unit": "g"}, "sugars": {"value": 4, "unit": "g"}, "carbohydrates": {"value": 5, "unit": "g"}}}}}'
+    expect:
+      rows:
+        - product_code: '00123'
+          last_modified_at: '2026-09-10 00:26:40+00'
+          product_name: Yoghurt
+          nutriscore_grade: b
+          nutriscore_status: available
+          nutrition_basis: 100g
+          fat_g: 3.5
+          sugars_g: 4
+          validation_errors: '{}'
+          quality_warnings: '{}'
+          is_valid: true
+
+  - name: test_non_digit_product_code_invalidates_row
+    model: stg_openfoodfacts__product_records
+    given:
+      - input: source('openfoodfacts', 'product_records')
+        rows:
+          - source_file_name: delta.json.gz
+            source_line_number: 1
+            loaded_at: '2026-10-28 00:00:00+00'
+            payload: '{"code": "12A45", "last_modified_t": 1789000000}'
+    expect:
+      rows:
+        - product_code: 12A45
+          validation_errors: '{non_digit_product_code}'
+          is_valid: false
+
+  - name: test_unexpected_unit_drops_value_and_warns
+    model: stg_openfoodfacts__product_records
+    given:
+      - input: source('openfoodfacts', 'product_records')
+        rows:
+          - source_file_name: delta.json.gz
+            source_line_number: 1
+            loaded_at: '2026-10-28 00:00:00+00'
+            payload: '{"code": "00123", "last_modified_t": 1789000000, "nutrition": {"aggregated_set": {"per": "100g", "nutrients": {"fat": {"value": 3500, "unit": "mg"}, "proteins": {"value": 8, "unit": "g"}}}}}'
+    expect:
+      rows:
+        - fat_g: null
+          proteins_g: 8
+          quality_warnings: '{unexpected_nutrition_unit}'
+          is_valid: true
+
+  - name: test_contradictory_nutrients_are_flagged
+    model: stg_openfoodfacts__product_records
+    given:
+      - input: source('openfoodfacts', 'product_records')
+        rows:
+          - source_file_name: delta.json.gz
+            source_line_number: 1
+            loaded_at: '2026-10-28 00:00:00+00'
+            payload: '{"code": "00123", "last_modified_t": 1789000000, "nutrition": {"aggregated_set": {"per": "100g", "nutrients": {"carbohydrates": {"value": 10, "unit": "g"}, "sugars": {"value": 11.01, "unit": "g"}, "fat": {"value": 10, "unit": "g"}, "saturated-fat": {"value": 11, "unit": "g"}}}}}'
+    expect:
+      rows:
+        - sugars_g: 11.01
+          saturated_fat_g: 11
+          quality_warnings: '{sugars_exceed_carbohydrates}'
+          is_valid: true
