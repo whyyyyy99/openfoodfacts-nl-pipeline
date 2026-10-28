@@ -7,7 +7,7 @@ from src.transform import (
     DataQualityError,
     EMPTY_PRODUCT_CODE,
     HEURISTIC_ENERGY_OVER_950KCAL,
-    HEURISTIC_MACRONUTRIENT_SUM_OVER_105G,
+    HEURISTIC_MACRONUTRIENT_SUM_OVER_110G,
     INVALID_LAST_MODIFIED_T,
     ALL_AFFECTED_CODES_SQL,
     ALL_RAW_RECORDS_SQL,
@@ -268,27 +268,27 @@ def test_nutrients_without_basis_are_warned():
         (
             {
                 "carbohydrates": {"value": 10, "unit": "g"},
-                "sugars": {"value": 10.11, "unit": "g"},
+                "sugars": {"value": 11.01, "unit": "g"},
             },
             SUGARS_EXCEED_CARBOHYDRATES,
         ),
         (
             {
                 "fat": {"value": 10, "unit": "g"},
-                "saturated-fat": {"value": 10.1, "unit": "g"},
+                "saturated-fat": {"value": 11, "unit": "g"},
             },
             None,
         ),
         (
             {
                 "fat": {"value": 10, "unit": "g"},
-                "saturated-fat": {"value": 10.11, "unit": "g"},
+                "saturated-fat": {"value": 11.01, "unit": "g"},
             },
             SATURATED_FAT_EXCEEDS_FAT,
         ),
         (
             {
-                "fat": {"value": 35, "unit": "g"},
+                "fat": {"value": 40, "unit": "g"},
                 "proteins": {"value": 20, "unit": "g"},
                 "carbohydrates": {"value": 49, "unit": "g"},
                 "salt": {"value": 1, "unit": "g"},
@@ -297,12 +297,12 @@ def test_nutrients_without_basis_are_warned():
         ),
         (
             {
-                "fat": {"value": 35.01, "unit": "g"},
+                "fat": {"value": 40.01, "unit": "g"},
                 "proteins": {"value": 20, "unit": "g"},
                 "carbohydrates": {"value": 49, "unit": "g"},
                 "salt": {"value": 1, "unit": "g"},
             },
-            HEURISTIC_MACRONUTRIENT_SUM_OVER_105G,
+            HEURISTIC_MACRONUTRIENT_SUM_OVER_110G,
         ),
         ({"energy-kcal": {"value": 950, "unit": "kcal"}}, None),
         (
@@ -339,14 +339,14 @@ def test_100ml_basis_does_not_apply_100g_mass_limit():
         (
             {
                 "carbohydrates": {"value": 10, "unit": "g"},
-                "sugars": {"value": 10.11, "unit": "g"},
+                "sugars": {"value": 11.01, "unit": "g"},
             },
             SUGARS_EXCEED_CARBOHYDRATES,
         ),
         (
             {
                 "fat": {"value": 10, "unit": "g"},
-                "saturated-fat": {"value": 10.11, "unit": "g"},
+                "saturated-fat": {"value": 11.01, "unit": "g"},
             },
             SATURATED_FAT_EXCEEDS_FAT,
         ),
@@ -374,14 +374,14 @@ def test_100ml_basis_does_not_apply_100g_heuristics():
             per="100ml",
             **{
                 "energy-kcal": {"value": 951, "unit": "kcal"},
-                "fat": {"value": 40, "unit": "g"},
+                "fat": {"value": 41, "unit": "g"},
                 "proteins": {"value": 30, "unit": "g"},
                 "carbohydrates": {"value": 40, "unit": "g"},
             },
         ),
     )
 
-    assert HEURISTIC_MACRONUTRIENT_SUM_OVER_105G not in row.quality_warnings
+    assert HEURISTIC_MACRONUTRIENT_SUM_OVER_110G not in row.quality_warnings
     assert HEURISTIC_ENERGY_OVER_950KCAL not in row.quality_warnings
 
 

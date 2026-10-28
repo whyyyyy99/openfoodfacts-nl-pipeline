@@ -23,14 +23,16 @@ UNEXPECTED_NUTRITION_UNIT = "unexpected_nutrition_unit"
 NUTRIENT_EXCEEDS_100G = "nutrient_exceeds_100g"
 SUGARS_EXCEED_CARBOHYDRATES = "sugars_exceed_carbohydrates"
 SATURATED_FAT_EXCEEDS_FAT = "saturated_fat_exceeds_fat"
-HEURISTIC_MACRONUTRIENT_SUM_OVER_105G = (
-    "heuristic_macronutrient_sum_over_105g"
+HEURISTIC_MACRONUTRIENT_SUM_OVER_110G = (
+    "heuristic_macronutrient_sum_over_110g"
 )
 HEURISTIC_ENERGY_OVER_950KCAL = "heuristic_energy_over_950kcal"
 UNEXPECTED_NUTRISCORE_VALUE = "unexpected_nutriscore_value"
 
-NUTRIENT_COMPARISON_TOLERANCE_G = Decimal("0.1")
-MACRONUTRIENT_SUM_WARNING_G = Decimal("105")
+# Labels round values, often to whole grams, so near-equal pairs are not flagged.
+NUTRIENT_COMPARISON_TOLERANCE_G = Decimal("1")
+# Some labels count fibre inside carbohydrates, so sums slightly above 100 g are plausible.
+MACRONUTRIENT_SUM_WARNING_G = Decimal("110")
 ENERGY_WARNING_KCAL = Decimal("950")
 
 NUTRIENT_UNITS = {
@@ -199,7 +201,7 @@ def _append_nutrition_consistency_warnings(
             Decimal(0),
         )
         if macronutrient_sum > MACRONUTRIENT_SUM_WARNING_G:
-            warnings.append(HEURISTIC_MACRONUTRIENT_SUM_OVER_105G)
+            warnings.append(HEURISTIC_MACRONUTRIENT_SUM_OVER_110G)
 
         energy_kcal = values["energy-kcal"]
         if energy_kcal is not None and energy_kcal > ENERGY_WARNING_KCAL:
